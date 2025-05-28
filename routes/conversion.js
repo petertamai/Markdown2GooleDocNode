@@ -1,3 +1,5 @@
+// Enhanced version of routes/conversion.js with better folder validation
+
 const express = require('express');
 const { google } = require('googleapis');
 const { body, query, param, validationResult } = require('express-validator');
@@ -32,7 +34,9 @@ router.post('/markdown-to-doc', conversionLimiter, [
   body('folderId')
     .optional()
     .isString()
-    .withMessage('Folder ID must be a string'),
+    .isLength({ min: 10, max: 100 })
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage('Folder ID must be a valid Google Drive folder ID (10-100 alphanumeric characters)'),
   body('sharing')
     .optional()
     .isObject()
@@ -44,6 +48,7 @@ router.post('/markdown-to-doc', conversionLimiter, [
   console.log(`\n🔄 [${requestId}] CONVERSION STARTED`);
   console.log(`📝 Content length: ${req.body?.content?.length || 0} characters`);
   console.log(`📋 Title: "${req.body?.title || 'Untitled Document'}"`);
+  console.log(`📁 Folder ID: ${req.body?.folderId || 'Root folder'}`);
   console.log(`🔑 API Key: ${req.headers['x-api-key'] || 'MISSING'}`);
   console.log(`🌐 IP: ${req.ip}`);
 
@@ -67,6 +72,11 @@ router.post('/markdown-to-doc', conversionLimiter, [
     // Use the authenticated Google client from the middleware
     const drive = google.drive({ version: 'v3', auth: userAuth.authClient });
 
+    // Validate folder access if folderId is provided
+    if (folderId) {
+      await validateFolderAccess(drive, folderId, requestId);
+    }
+
     // Prepare file metadata
     const fileMetadata = {
       name: title,
@@ -77,6 +87,8 @@ router.post('/markdown-to-doc', conversionLimiter, [
     if (folderId) {
       fileMetadata.parents = [folderId];
       console.log(`📁 [${requestId}] Adding to folder: ${folderId}`);
+    } else {
+      console.log(`📁 [${requestId}] Saving to root folder (My Drive)`);
     }
 
     // Prepare media content
@@ -91,12 +103,13 @@ router.post('/markdown-to-doc', conversionLimiter, [
     const response = await drive.files.create({
       resource: fileMetadata,
       media: media,
-      fields: 'id,name,webViewLink,webContentLink,createdTime,size'
+      fields: 'id,name,webViewLink,webContentLink,createdTime,size,parents'
     });
 
     const documentData = response.data;
     console.log(`✅ [${requestId}] Google Drive API call successful!`);
     console.log(`📄 [${requestId}] Document ID: ${documentData.id}`);
+    console.log(`📁 [${requestId}] Saved in folder: ${documentData.parents?.[0] || 'Root'}`);
     console.log(`🔗 [${requestId}] Document URL: ${documentData.webViewLink}`);
 
     // Apply sharing settings if provided
@@ -124,7 +137,8 @@ router.post('/markdown-to-doc', conversionLimiter, [
         webViewLink: documentData.webViewLink,
         webContentLink: documentData.webContentLink,
         createdTime: documentData.createdTime,
-        size: documentData.size
+        size: documentData.size,
+        folderId: documentData.parents?.[0] || null
       },
       processing: {
         timeMs: processingTime,
@@ -152,6 +166,7 @@ router.post('/markdown-to-doc', conversionLimiter, [
       error: error.message,
       userId: req.userAuth?.userId,
       contentLength: req.body?.content?.length,
+      folderId: req.body?.folderId,
       processingTime
     });
 
@@ -174,11 +189,22 @@ router.post('/markdown-to-doc', conversionLimiter, [
       });
     }
 
+    if (error.code === 404 && error.message.includes('folder')) {
+      console.log(`📁 [${requestId}] Folder not found or no access`);
+      return res.status(404).json({
+        error: 'Folder not found',
+        message: 'The specified folder does not exist or you do not have access to it',
+        requestId
+      });
+    }
+
     if (error.code === 400) {
-      console.log(`📝 [${requestId}] Invalid markdown content`);
+      console.log(`📝 [${requestId}] Invalid markdown content or request`);
       return res.status(400).json({
         error: 'Invalid request',
-        message: 'The markdown content could not be processed',
+        message: error.message.includes('folder') ? 
+          'Invalid folder ID or folder access denied' : 
+          'The markdown content could not be processed',
         requestId
       });
     }
@@ -193,36 +219,142 @@ router.post('/markdown-to-doc', conversionLimiter, [
 });
 
 /**
+ * Get list of user's folders for folder selection
+ * @route GET /api/convert/folders
+ */
+router.get('/folders', async (req, res) => {
+  try {
+    const userAuth = req.userAuth;
+    const { limit = 50 } = req.query;
+
+    const drive = google.drive({ version: 'v3', auth: userAuth.authClient });
+
+    // Get user's folders
+    const response = await drive.files.list({
+      q: "mimeType='application/vnd.google-apps.folder' and trashed=false",
+      orderBy: 'name',
+      pageSize: Math.min(parseInt(limit), 100),
+      fields: 'files(id,name,parents,createdTime,modifiedTime)'
+    });
+
+    res.json({
+      success: true,
+      folders: response.data.files.map(folder => ({
+        id: folder.id,
+        name: folder.name,
+        isRoot: !folder.parents || folder.parents.length === 0,
+        parentId: folder.parents?.[0] || null,
+        createdTime: folder.createdTime,
+        modifiedTime: folder.modifiedTime
+      })),
+      total: response.data.files.length
+    });
+
+  } catch (error) {
+    logError('Get folders failed', {
+      error: error.message,
+      userId: req.userAuth?.userId
+    });
+
+    res.status(500).json({
+      error: 'Failed to retrieve folders',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * Validate that user has access to the specified folder
+ */
+async function validateFolderAccess(drive, folderId, requestId = 'unknown') {
+  try {
+    console.log(`🔍 [${requestId}] Validating folder access: ${folderId}`);
+    
+    // Try to get folder metadata to verify access
+    const folderResponse = await drive.files.get({
+      fileId: folderId,
+      fields: 'id,name,mimeType,capabilities'
+    });
+
+    const folder = folderResponse.data;
+
+    // Verify it's actually a folder
+    if (folder.mimeType !== 'application/vnd.google-apps.folder') {
+      throw new Error(`Specified ID is not a folder (type: ${folder.mimeType})`);
+    }
+
+    // Check if user can add files to this folder
+    if (folder.capabilities && folder.capabilities.canAddChildren === false) {
+      throw new Error('You do not have permission to add files to this folder');
+    }
+
+    console.log(`✅ [${requestId}] Folder validation successful: "${folder.name}" (${folderId})`);
+    
+    return folder;
+
+  } catch (error) {
+    console.log(`❌ [${requestId}] Folder validation failed: ${error.message}`);
+    
+    if (error.code === 404) {
+      const folderError = new Error('Folder not found or you do not have access to it');
+      folderError.code = 404;
+      throw folderError;
+    }
+    
+    if (error.code === 403) {
+      const accessError = new Error('You do not have permission to access this folder');
+      accessError.code = 403;
+      throw accessError;
+    }
+    
+    throw error;
+  }
+}
+
+/**
  * Get conversion history for the authenticated user
  * @route GET /api/convert/history
  */
 router.get('/history', async (req, res) => {
   try {
     const userAuth = req.userAuth;
-    const { limit = 20, pageToken } = req.query;
+    const { limit = 20, pageToken, folderId } = req.query;
 
     const drive = google.drive({ version: 'v3', auth: userAuth.authClient });
 
+    // Build query
+    let query = "mimeType='application/vnd.google-apps.document' and trashed=false";
+    
+    // Filter by folder if specified
+    if (folderId) {
+      query += ` and '${folderId}' in parents`;
+    }
+
     // Get user's Google Docs
     const response = await drive.files.list({
-      q: "mimeType='application/vnd.google-apps.document' and trashed=false",
+      q: query,
       orderBy: 'createdTime desc',
       pageSize: Math.min(parseInt(limit), 100),
       pageToken: pageToken,
-      fields: 'nextPageToken,files(id,name,createdTime,modifiedTime,webViewLink,size)'
+      fields: 'nextPageToken,files(id,name,createdTime,modifiedTime,webViewLink,size,parents)'
     });
 
     res.json({
       success: true,
-      documents: response.data.files,
+      documents: response.data.files.map(doc => ({
+        ...doc,
+        folderId: doc.parents?.[0] || null
+      })),
       nextPageToken: response.data.nextPageToken,
-      totalResults: response.data.files.length
+      totalResults: response.data.files.length,
+      filteredByFolder: !!folderId
     });
 
   } catch (error) {
     logError('Get conversion history failed', {
       error: error.message,
-      userId: req.userAuth?.userId
+      userId: req.userAuth?.userId,
+      folderId: req.query?.folderId
     });
 
     res.status(500).json({
