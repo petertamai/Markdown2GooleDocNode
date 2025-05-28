@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - MarkdownDocs Configuration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="setup.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit;">
+                    <div class="brand-icon">📝</div>
+                    <span class="brand-text">MarkdownDocs</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">← Back to Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Setup Container -->
+    <div class="setup-container">
+        <div class="setup-content">
+            <!-- Setup Header -->
+            <div class="setup-header">
+                <div class="setup-icon">⚙️</div>
+                <h1 class="setup-title">System Configuration</h1>
+                <p class="setup-subtitle">Configure your Google Cloud credentials to enable Markdown to Google Docs conversion</p>
+            </div>
+
+            <!-- Configuration Status -->
+            <div id="configStatus" class="config-status">
+                <div class="status-loading">
+                    <div class="loading-spinner"></div>
+                    <span>Checking configuration...</span>
+                </div>
+            </div>
+
+            <!-- Google Cloud Setup Guide -->
+            <div class="setup-guide">
+                <h2 class="guide-title">📋 Setup Guide</h2>
+                <div class="guide-steps">
+                    <div class="guide-step">
+                        <div class="step-indicator">
+                            <div class="step-number">1</div>
+                        </div>
+                        <div class="step-content">
+                            <h3>Create Google Cloud Project</h3>
+                            <p>Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> and create a new project or select an existing one.</p>
+                        </div>
+                    </div>
+
+                    <div class="guide-step">
+                        <div class="step-indicator">
+                            <div class="step-number">2</div>
+                        </div>
+                        <div class="step-content">
+                            <h3>Enable Required APIs</h3>
+                            <p>Enable these APIs in your project:</p>
+                            <ul class="api-list">
+                                <li>
+                                    <span class="api-name">Google Drive API</span>
+                                    <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" class="api-link">Enable →</a>
+                                </li>
+                                <li>
+                                    <span class="api-name">Google Docs API</span>
+                                    <a href="https://console.cloud.google.com/apis/library/docs.googleapis.com" target="_blank" class="api-link">Enable →</a>
+                                </li>
+                                <li>
+                                    <span class="api-name">Google+ API</span>
+                                    <a href="https://console.cloud.google.com/apis/library/plus.googleapis.com" target="_blank" class="api-link">Enable →</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="guide-step">
+                        <div class="step-indicator">
+                            <div class="step-number">3</div>
+                        </div>
+                        <div class="step-content">
+                            <h3>Create OAuth Credentials</h3>
+                            <p>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a> and create OAuth 2.0 Client ID:</p>
+                            <ol class="credential-steps">
+                                <li>Click "Create Credentials" → "OAuth 2.0 Client ID"</li>
+                                <li>Choose "Web application" as the application type</li>
+                                <li>Add authorized redirect URI: <code class="redirect-uri" id="redirectUri">Loading...</code></li>
+                                <li>Copy the Client ID and Client Secret</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <div class="config-form-container">
+                <h2 class="form-title">🔐 Enter Your Credentials</h2>
+                <form id="configForm" class="config-form">
+                    <div class="form-group">
+                        <label for="clientId" class="form-label">
+                            Google Client ID
+                            <span class="label-required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="clientId" 
+                            name="clientId" 
+                            class="form-input" 
+                            placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com"
+                            required
+                        >
+                        <div class="form-hint">Found in your Google Cloud Console credentials</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="clientSecret" class="form-label">
+                            Google Client Secret
+                            <span class="label-required">*</span>
+                        </label>
+                        <input 
+                            type="password" 
+                            id="clientSecret" 
+                            name="clientSecret" 
+                            class="form-input" 
+                            placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                            required
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('clientSecret')">
+                            <span class="toggle-icon">👁️</span>
+                        </button>
+                        <div class="form-hint">Keep this secret and secure</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="redirectUri" class="form-label">
+                            Redirect URI
+                            <span class="label-optional">(auto-detected)</span>
+                        </label>
+                        <input 
+                            type="url" 
+                            id="redirectUriInput" 
+                            name="redirectUri" 
+                            class="form-input" 
+                            readonly
+                        >
+                        <div class="form-hint">This URI should be added to your Google OAuth configuration</div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="testCredentials()">
+                            <span class="btn-icon">🧪</span>
+                            Test Connection
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <span class="btn-icon">💾</span>
+                            Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Success State -->
+            <div id="successState" class="success-state" style="display: none;">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">Configuration Complete!</h2>
+                <p class="success-message">Your MarkdownDocs service is now ready to use.</p>
+                <div class="success-actions">
+                    <button class="btn-hero-primary" onclick="goToConverter()">
+                        <span>Start Converting</span>
+                        <svg class="btn-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M4.166 10h11.668m-5.834 5.834L15.834 10 10 4.166" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="btn-secondary" onclick="reconfigure()">
+                        <span class="btn-icon">⚙️</span>
+                        Reconfigure
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Notice -->
+        <div class="security-notice">
+            <div class="notice-icon">🔒</div>
+            <div class="notice-content">
+                <h3>Security Notice</h3>
+                <p>Your credentials are stored securely and only used for Google API authentication. This service runs locally on your machine and your data never leaves your control.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content loading-modal">
+            <div class="loading-content">
+                <div class="loading-spinner large"></div>
+                <h3 id="loadingTitle">Processing...</h3>
+                <p id="loadingMessage">Please wait while we configure your system.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="setup.js"></script>
+</body>
+</html>

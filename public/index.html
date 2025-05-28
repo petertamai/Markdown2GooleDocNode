@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkdownDocs - Convert Markdown to Google Docs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <div class="brand-icon">📝</div>
+                <span class="brand-text">MarkdownDocs</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#setup" class="nav-link">Setup</a>
+                <a href="#docs" class="nav-link">Docs</a>
+                <button class="btn-primary" onclick="checkSetup()">Get Started</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+            <div class="gradient-orb orb-3"></div>
+        </div>
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="badge-text">✨ Powered by Google's Native Conversion</span>
+                </div>
+                <h1 class="hero-title">
+                    Transform Markdown into 
+                    <span class="gradient-text">Beautiful Google Docs</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Professional-grade conversion service that transforms your Markdown content into perfectly formatted Google Documents. One-time setup, lifetime access.
+                </p>
+                <div class="hero-actions">
+                    <button class="btn-hero-primary" onclick="checkSetup()">
+                        <span>Start Converting</span>
+                        <svg class="btn-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M4.166 10h11.668m-5.834 5.834L15.834 10 10 4.166" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="btn-hero-secondary" onclick="showDemo()">
+                        <svg class="btn-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 18.334a8.334 8.334 0 1 0 0-16.668 8.334 8.334 0 0 0 0 16.668Z" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M8.334 7.5 12.5 10l-4.166 2.5V7.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Watch Demo
+                    </button>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">99.9%</span>
+                        <span class="stat-label">Uptime</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-number">< 2s</span>
+                        <span class="stat-label">Conversion</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-number">Auto</span>
+                        <span class="stat-label">Refresh</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="demo-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <div class="control-dot red"></div>
+                            <div class="control-dot yellow"></div>
+                            <div class="control-dot green"></div>
+                        </div>
+                        <div class="window-title">Markdown → Google Docs</div>
+                    </div>
+                    <div class="demo-content">
+                        <div class="demo-input">
+                            <div class="demo-label">Input: Markdown</div>
+                            <div class="demo-code">
+                                <span class="code-hash"># </span><span class="code-title">My Document</span><br>
+                                <span class="code-text">This is </span><span class="code-bold">**bold**</span><span class="code-text"> text.</span><br>
+                                <span class="code-hash">## </span><span class="code-subtitle">Features</span><br>
+                                <span class="code-list">- Auto conversion</span><br>
+                                <span class="code-list">- Perfect formatting</span>
+                            </div>
+                        </div>
+                        <div class="demo-arrow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M5 12h14m-7-7 7 7-7 7" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="demo-output">
+                            <div class="demo-label">Output: Google Docs</div>
+                            <div class="google-doc-preview">
+                                <div class="doc-title">My Document</div>
+                                <div class="doc-text">This is <strong>bold</strong> text.</div>
+                                <div class="doc-subtitle">Features</div>
+                                <div class="doc-list">• Auto conversion</div>
+                                <div class="doc-list">• Perfect formatting</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-badge">Features</div>
+                <h2 class="section-title">Everything you need for perfect conversions</h2>
+                <p class="section-subtitle">Professional tools built for teams and individuals who demand quality</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔑</div>
+                    <h3 class="feature-title">One-Time Authentication</h3>
+                    <p class="feature-description">Authenticate once with Google, get a permanent API key. No repeated logins or token management.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3 class="feature-title">Auto Token Refresh</h3>
+                    <p class="feature-description">Background token refresh ensures your API key works forever. No maintenance required.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Native Google Conversion</h3>
+                    <p class="feature-description">Uses Google's built-in Markdown parser for perfect formatting, tables, and code blocks.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3 class="feature-title">Enterprise Security</h3>
+                    <p class="feature-description">Bank-grade security with rate limiting, input validation, and secure credential storage.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Analytics & Monitoring</h3>
+                    <p class="feature-description">Detailed conversion logs, performance metrics, and usage analytics for optimization.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3 class="feature-title">Production Ready</h3>
+                    <p class="feature-description">PM2 clustering, error handling, and monitoring built for high-volume production use.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Setup Section -->
+    <section id="setup" class="setup">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-badge">Quick Setup</div>
+                <h2 class="section-title">Get started in minutes</h2>
+                <p class="section-subtitle">Simple configuration process to connect with Google Cloud</p>
+            </div>
+            <div class="setup-steps">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3 class="step-title">Create Google Cloud Project</h3>
+                        <p class="step-description">Set up a new project in Google Cloud Console and enable Drive & Docs APIs</p>
+                        <a href="https://console.cloud.google.com/" target="_blank" class="step-link">Open Google Console →</a>
+                    </div>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3 class="step-title">Configure OAuth Credentials</h3>
+                        <p class="step-description">Create OAuth 2.0 credentials and copy your Client ID and Secret</p>
+                    </div>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3 class="step-title">Complete Setup</h3>
+                        <p class="step-description">Enter your credentials in our secure configuration interface</p>
+                        <button class="step-button" onclick="showSetup()">Configure Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="brand-icon">📝</div>
+                    <span class="brand-text">MarkdownDocs</span>
+                </div>
+                <div class="footer-text">
+                    Professional Markdown to Google Docs conversion service
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="setupModal" class="modal">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>System Configuration</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Redirecting to configuration interface...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
