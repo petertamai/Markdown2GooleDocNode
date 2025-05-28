@@ -8,14 +8,38 @@ const apiKeyManager = require('../services/apiKeyManager');
 const router = express.Router();
 
 // Google OAuth2 client setup
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+let oauth2Client;
+
+function initializeOAuth2Client() {
+  console.log('🔧 Initializing OAuth2 client...');
+  console.log('📊 Environment check:', {
+    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    hasRedirectUri: !!process.env.GOOGLE_REDIRECT_URI,
+    clientIdPrefix: process.env.GOOGLE_CLIENT_ID?.substring(0, 10) + '...',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI
+  });
+
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+    console.error('❌ Missing required OAuth2 environment variables');
+    return null;
+  }
+
+  oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+
+  console.log('✅ OAuth2 client initialized successfully');
+  return oauth2Client;
+}
+
+// Initialize on startup
+oauth2Client = initializeOAuth2Client();
 
 // Validate OAuth2 configuration on startup
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+if (!oauth2Client) {
   console.error('❌ Missing required Google OAuth2 environment variables');
   console.error('Required: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI');
 } else {
@@ -36,11 +60,38 @@ const SCOPES = [
  */
 router.get('/google', (req, res) => {
   try {
+    console.log('🔐 OAuth URL request received');
+    
+    // Reinitialize OAuth client if needed (in case env vars were updated)
+    if (!oauth2Client || !process.env.GOOGLE_CLIENT_ID) {
+      console.log('🔄 Reinitializing OAuth2 client...');
+      oauth2Client = initializeOAuth2Client();
+    }
+
+    if (!oauth2Client) {
+      console.error('❌ OAuth2 client not available - missing configuration');
+      return res.status(500).json({
+        error: 'OAuth2 not configured',
+        message: 'Google OAuth2 credentials are not properly configured'
+      });
+    }
+
+    const returnUrl = req.query.returnUrl || req.headers.referer || '/setup';
+    
     const state = jwt.sign(
-      { timestamp: Date.now() }, 
+      { 
+        timestamp: Date.now(),
+        returnUrl: returnUrl
+      }, 
       process.env.JWT_SECRET, 
       { expiresIn: '10m' }
     );
+
+    console.log('🌐 Generating OAuth URL with:', {
+      scopes: SCOPES.length,
+      returnUrl,
+      hasState: !!state
+    });
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -49,12 +100,16 @@ router.get('/google', (req, res) => {
       prompt: 'consent' // Forces refresh token generation
     });
 
+    console.log('✅ OAuth URL generated successfully');
+    console.log('🔗 Auth URL preview:', authUrl.substring(0, 100) + '...');
+
     res.json({
       authUrl,
       message: 'Visit the provided URL to authorise the application'
     });
 
   } catch (error) {
+    console.error('💥 OAuth URL generation failed:', error);
     logError('OAuth URL generation failed', error);
     res.status(500).json({ 
       error: 'Failed to generate authentication URL',
@@ -85,8 +140,9 @@ router.get('/callback', [
     console.log('🔄 Processing OAuth callback with code:', code ? code.substring(0, 20) + '...' : 'MISSING');
 
     // Verify state parameter
+    let stateData;
     try {
-      jwt.verify(state, process.env.JWT_SECRET);
+      stateData = jwt.verify(state, process.env.JWT_SECRET);
       console.log('✅ State parameter verified successfully');
     } catch (stateError) {
       console.log('❌ State verification failed:', stateError.message);
@@ -122,8 +178,18 @@ router.get('/callback', [
     // Generate persistent API key
     const apiKey = await apiKeyManager.createApiKey(userInfo.data, tokens);
 
+    // Determine redirect URL from state
+    const returnUrl = stateData.returnUrl || '/setup';
+    const isSetupFlow = returnUrl.includes('/setup') || returnUrl.includes('setup');
+
     // Success response with API key
-    if (process.env.CLIENT_SUCCESS_REDIRECT) {
+    if (isSetupFlow) {
+      // Redirect back to setup page with API key
+      const setupUrl = returnUrl.includes('?') 
+        ? `${returnUrl}&apiKey=${apiKey}`
+        : `${returnUrl}?apiKey=${apiKey}`;
+      res.redirect(setupUrl);
+    } else if (process.env.CLIENT_SUCCESS_REDIRECT) {
       const separator = process.env.CLIENT_SUCCESS_REDIRECT.includes('?') ? '&' : '?';
       res.redirect(`${process.env.CLIENT_SUCCESS_REDIRECT}${separator}apiKey=${apiKey}`);
     } else {
@@ -153,7 +219,27 @@ router.get('/callback', [
       status: error.status
     });
     
-    if (process.env.CLIENT_ERROR_REDIRECT) {
+    // Try to get returnUrl from state for error redirect
+    let returnUrl = '/setup';
+    try {
+      const { code, state } = req.query;
+      if (state) {
+        const stateData = jwt.verify(state, process.env.JWT_SECRET);
+        returnUrl = stateData.returnUrl || '/setup';
+      }
+    } catch (stateError) {
+      // Use default returnUrl
+    }
+    
+    const isSetupFlow = returnUrl.includes('/setup') || returnUrl.includes('setup');
+    
+    if (isSetupFlow) {
+      // Redirect back to setup page with error
+      const setupErrorUrl = returnUrl.includes('?') 
+        ? `${returnUrl}&error=auth_failed`
+        : `${returnUrl}?error=auth_failed`;
+      res.redirect(setupErrorUrl);
+    } else if (process.env.CLIENT_ERROR_REDIRECT) {
       const separator = process.env.CLIENT_ERROR_REDIRECT.includes('?') ? '&' : '?';
       res.redirect(`${process.env.CLIENT_ERROR_REDIRECT}${separator}error=auth_failed`);
     } else {
@@ -417,3 +503,4 @@ router.post('/regenerate', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.initializeOAuth2Client = initializeOAuth2Client;

@@ -437,6 +437,97 @@
     gap: var(--space-4);
     justify-content: center;
     flex-wrap: wrap;
+    margin-bottom: var(--space-6);
+}
+
+.auth-info {
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-top: var(--space-6);
+}
+
+.auth-info p {
+    color: var(--gray-700);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+}
+
+.auth-info ol {
+    color: var(--gray-600);
+    line-height: 1.6;
+}
+
+.auth-info ol li {
+    margin-bottom: var(--space-2);
+}
+
+/* API Key Display */
+.api-key-display {
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin: var(--space-6) 0;
+    border: 1px solid var(--gray-200);
+}
+
+.api-key-display label {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: var(--space-3);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.api-key-box {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 2px solid var(--success-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+    gap: var(--space-3);
+}
+
+.api-key-box code {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--success-700);
+    background: none;
+    padding: 0;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.copy-btn {
+    background: var(--success-100);
+    border: 1px solid var(--success-300);
+    color: var(--success-700);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.copy-btn:hover {
+    background: var(--success-200);
+    transform: scale(1.05);
+}
+
+.api-key-note {
+    color: var(--success-600);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
 }
 
 /* Security Notice */

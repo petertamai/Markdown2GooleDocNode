@@ -1,7 +1,7 @@
 {
     "name": "markdown-to-google-docs-api",
     "version": "1.0.0",
-    "description": "Production-ready API for converting Markdown to Google Docs using Google's native conversion",
+    "description": "Production-ready API for converting Markdown to Google Docs using Google's native conversion with beautiful web interface",
     "main": "server.js",
     "scripts": {
       "start": "node server.js",
@@ -22,7 +22,9 @@
       "api",
       "nodejs",
       "express",
-      "oauth2"
+      "oauth2",
+      "web-interface",
+      "saas"
     ],
     "author": "Piotr Tamulewicz",
     "license": "MIT",

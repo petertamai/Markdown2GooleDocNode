@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Converter - MarkdownDocs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="converter.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit;">
+                    <div class="brand-icon">📝</div>
+                    <span class="brand-text">MarkdownDocs</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <div class="nav-status" id="authStatus">
+                    <div class="status-loading">
+                        <div class="loading-spinner"></div>
+                        <span>Checking authentication...</span>
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="authenticate()">
+                    <span class="btn-icon">🔑</span>
+                    Get API Key
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="converter-container">
+        <!-- Authentication Section -->
+        <div id="authSection" class="auth-section">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <div class="auth-icon">🔑</div>
+                    <h2>Authentication Required</h2>
+                    <p>Get your API key to start converting Markdown to Google Docs</p>
+                </div>
+                <div class="auth-actions">
+                    <button class="btn-hero-primary" onclick="authenticate()">
+                        <span>Authenticate with Google</span>
+                        <svg class="btn-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M4.166 10h11.668m-5.834 5.834L15.834 10 10 4.166" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="auth-info">
+                        <p>You'll be redirected to Google to authorize access to your Drive and Docs.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Key Section -->
+        <div id="apiKeySection" class="api-key-section" style="display: none;">
+            <div class="api-key-card">
+                <div class="api-key-header">
+                    <h3>Enter Your API Key</h3>
+                    <p>Use the API key you received after authentication</p>
+                </div>
+                <div class="api-key-form">
+                    <div class="form-group">
+                        <input 
+                            type="text" 
+                            id="apiKeyInput" 
+                            placeholder="md2doc_xxxxxxxx" 
+                            class="form-input api-key-input"
+                        >
+                        <button class="btn-primary" onclick="validateApiKey()">
+                            <span>Validate Key</span>
+                        </button>
+                    </div>
+                    <div class="api-key-help">
+                        <p>Don't have an API key? <button class="link-button" onclick="authenticate()">Get one here</button></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Converter Section -->
+        <div id="converterSection" class="converter-section" style="display: none;">
+            <div class="converter-layout">
+                <!-- Input Panel -->
+                <div class="input-panel">
+                    <div class="panel-header">
+                        <h3>📝 Markdown Input</h3>
+                        <div class="panel-actions">
+                            <button class="btn-small" onclick="clearInput()">Clear</button>
+                            <button class="btn-small" onclick="loadSample()">Sample</button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <textarea 
+                            id="markdownInput" 
+                            placeholder="# Your Document Title&#10;&#10;Start writing your Markdown here...&#10;&#10;## Features&#10;- **Bold text**&#10;- *Italic text*&#10;- `Code snippets`&#10;&#10;```javascript&#10;console.log('Hello World!');&#10;```"
+                            class="markdown-textarea"
+                        ></textarea>
+                        <div class="input-stats">
+                            <span id="charCount">0 characters</span>
+                            <span id="wordCount">0 words</span>
+                            <span id="lineCount">0 lines</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls Panel -->
+                <div class="controls-panel">
+                    <div class="document-settings">
+                        <h4>Document Settings</h4>
+                        <div class="form-group">
+                            <label for="documentTitle">Title</label>
+                            <input 
+                                type="text" 
+                                id="documentTitle" 
+                                placeholder="My Document" 
+                                class="form-input"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="folderId">Folder ID (optional)</label>
+                            <input 
+                                type="text" 
+                                id="folderId" 
+                                placeholder="Google Drive folder ID" 
+                                class="form-input"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="sharing-settings">
+                        <h4>Sharing Settings</h4>
+                        <div class="form-group">
+                            <label for="visibility">Visibility</label>
+                            <select id="visibility" class="form-select">
+                                <option value="private">Private</option>
+                                <option value="public">Public</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="shareEmails">Share with emails</label>
+                            <input 
+                                type="text" 
+                                id="shareEmails" 
+                                placeholder="email@example.com, another@example.com" 
+                                class="form-input"
+                            >
+                            <div class="form-hint">Comma-separated email addresses</div>
+                        </div>
+                    </div>
+
+                    <div class="conversion-action">
+                        <button id="convertBtn" class="btn-convert" onclick="convertMarkdown()">
+                            <span class="convert-icon">🚀</span>
+                            <span class="convert-text">Convert to Google Doc</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section" style="display: none;">
+                <div class="results-card">
+                    <div class="result-header">
+                        <h3>✅ Conversion Successful!</h3>
+                        <button class="btn-small" onclick="hideResults()">Close</button>
+                    </div>
+                    <div class="result-content">
+                        <div class="document-info">
+                            <div class="doc-preview">
+                                <div class="doc-icon">📄</div>
+                                <div class="doc-details">
+                                    <h4 id="resultTitle">Document Title</h4>
+                                    <p id="resultDetails">Created just now</p>
+                                </div>
+                            </div>
+                            <div class="doc-actions">
+                                <a id="viewDocLink" href="#" target="_blank" class="btn-primary">
+                                    <span class="btn-icon">👁️</span>
+                                    View Document
+                                </a>
+                                <button class="btn-secondary" onclick="copyDocumentLink()">
+                                    <span class="btn-icon">📋</span>
+                                    Copy Link
+                                </button>
+                            </div>
+                        </div>
+                        <div class="conversion-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Processing Time</span>
+                                <span class="stat-value" id="processingTime">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Document Size</span>
+                                <span class="stat-value" id="documentSize">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Content Length</span>
+                                <span class="stat-value" id="contentLength">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div class="history-section">
+                <div class="history-header">
+                    <h3>📚 Recent Conversions</h3>
+                    <button class="btn-small" onclick="refreshHistory()">Refresh</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div class="history-loading">
+                        <div class="loading-spinner"></div>
+                        <span>Loading history...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="conversionModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content conversion-modal">
+            <div class="conversion-progress">
+                <div class="progress-icon">
+                    <div class="conversion-spinner"></div>
+                </div>
+                <h3 id="progressTitle">Converting Markdown</h3>
+                <p id="progressMessage">Processing your content and creating Google Doc...</p>
+                <div class="progress-steps">
+                    <div class="progress-step active" id="step1">
+                        <span class="step-icon">📝</span>
+                        <span>Processing Markdown</span>
+                    </div>
+                    <div class="progress-step" id="step2">
+                        <span class="step-icon">🔄</span>
+                        <span>Converting to Google Doc</span>
+                    </div>
+                    <div class="progress-step" id="step3">
+                        <span class="step-icon">✅</span>
+                        <span>Finalizing Document</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="converter.js"></script>
+</body>
+</html>

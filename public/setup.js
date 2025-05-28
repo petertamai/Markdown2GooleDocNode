@@ -3,24 +3,191 @@ let apiUrl = window.location.origin;
 
 // Initialize setup page
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 Setup page loaded');
+    
+    // Set redirect URI immediately
+    setRedirectUri();
+    
+    // Initialize other components
     initializeSetup();
     setupFormHandlers();
-    setRedirectUri();
+    
+    // Set redirect URI again after a delay to ensure it's set
+    setTimeout(setRedirectUri, 1000);
+    
+    checkForApiKey(); // Check if we're returning from OAuth
 });
+
+// Check for API key in URL (returning from OAuth)
+function checkForApiKey() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const apiKey = urlParams.get('apiKey');
+    const error = urlParams.get('error');
+    
+    if (error) {
+        console.log('❌ OAuth error:', error);
+        showNotification('Authentication failed. Please try again.', 'error');
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return false;
+    }
+    
+    if (apiKey) {
+        console.log('🔑 API key received from OAuth:', apiKey.substring(0, 15) + '...');
+        
+        // Save API key
+        localStorage.setItem('markdowndocs_api_key', apiKey);
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Show API key received state
+        showApiKeyReceivedState(apiKey);
+        
+        return true;
+    }
+    
+    return false;
+}
 
 // Initialize the setup page
 async function initializeSetup() {
     try {
+        // If we found an API key in URL, don't check config status
+        if (checkForApiKey()) {
+            return;
+        }
+        
         // Check current configuration status
         const status = await checkConfigurationStatus();
         updateConfigStatus(status);
         
+        console.log('📊 Configuration status:', status);
+        
         if (status.configured) {
-            showSuccessState();
+            // Check if user already has an API key
+            const savedApiKey = localStorage.getItem('markdowndocs_api_key');
+            if (savedApiKey) {
+                showApiKeyReceivedState(savedApiKey);
+            } else {
+                showSuccessState();
+            }
+            
+            // Hide reconfigure button if not allowed
+            if (!status.allowReconfigure) {
+                const reconfigureBtn = document.getElementById('reconfigureBtn');
+                if (reconfigureBtn) {
+                    reconfigureBtn.style.display = 'none';
+                    console.log('🔒 Reconfigure button hidden - not allowed');
+                }
+            }
         }
     } catch (error) {
         console.error('Failed to check configuration:', error);
         updateConfigStatus({ configured: false, error: error.message });
+    }
+}
+
+// Authenticate with Google
+async function authenticateWithGoogle() {
+    try {
+        showLoadingModal('Redirecting to Google', 'You will be redirected to Google for authentication...');
+        
+        console.log('🔄 Getting Google OAuth URL...');
+        
+        const response = await fetch(`${apiUrl}/api/auth/google`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to get authentication URL');
+        }
+        
+        if (data.authUrl) {
+            console.log('🌐 Redirecting to Google OAuth...');
+            
+            // Store current page for return (setup page)
+            localStorage.setItem('markdowndocs_return_url', window.location.href);
+            
+            // Redirect to Google OAuth
+            window.location.href = data.authUrl;
+        } else {
+            throw new Error('No authentication URL received');
+        }
+        
+    } catch (error) {
+        hideLoadingModal();
+        console.error('OAuth redirect failed:', error);
+        showNotification('Authentication failed: ' + error.message, 'error');
+    }
+}
+
+// Show API key received state
+function showApiKeyReceivedState(apiKey) {
+    // Hide other states
+    const configForm = document.querySelector('.config-form-container');
+    const successState = document.getElementById('successState');
+    const apiKeyState = document.getElementById('apiKeyReceivedState');
+    
+    if (configForm) configForm.style.display = 'none';
+    if (successState) successState.style.display = 'none';
+    
+    // Show API key state
+    apiKeyState.style.display = 'block';
+    
+    // Display the API key
+    const displayedApiKey = document.getElementById('displayedApiKey');
+    if (displayedApiKey) {
+        displayedApiKey.textContent = apiKey;
+    }
+    
+    // Update status
+    updateConfigStatus({ configured: true });
+    
+    // Animate in
+    setTimeout(() => {
+        apiKeyState.style.opacity = '1';
+        apiKeyState.style.transform = 'translateY(0)';
+    }, 100);
+    
+    console.log('✅ API key saved and displayed');
+}
+
+// Copy API key to clipboard
+function copyApiKey() {
+    const apiKeyElement = document.getElementById('displayedApiKey');
+    const apiKey = apiKeyElement.textContent;
+    
+    navigator.clipboard.writeText(apiKey).then(() => {
+        showNotification('API key copied to clipboard!', 'success');
+        
+        // Visual feedback
+        const copyBtn = document.querySelector('.copy-btn');
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = '✅';
+        copyBtn.style.background = 'var(--success-500)';
+        copyBtn.style.color = 'white';
+        
+        setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.background = '';
+            copyBtn.style.color = '';
+        }, 2000);
+        
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        showNotification('Failed to copy API key', 'error');
+    });
+}
+
+// Go to converter (updated to include API key)
+function goToConverter() {
+    const apiKey = localStorage.getItem('markdowndocs_api_key');
+    if (apiKey) {
+        // Include API key in URL for immediate access
+        window.location.href = `/converter?apiKey=${apiKey}`;
+    } else {
+        window.location.href = '/converter';
     }
 }
 
@@ -58,7 +225,7 @@ function updateConfigStatus(status) {
     }
 }
 
-// Set up form handlers
+// Setup event listeners
 function setupFormHandlers() {
     const form = document.getElementById('configForm');
     form.addEventListener('submit', handleFormSubmit);
@@ -69,6 +236,63 @@ function setupFormHandlers() {
         input.addEventListener('input', handleInputChange);
         input.addEventListener('blur', handleInputBlur);
     });
+    
+    // Test credentials button
+    const testBtn = document.getElementById('testCredentialsBtn');
+    if (testBtn) {
+        testBtn.addEventListener('click', testCredentials);
+    }
+    
+    // Password toggle buttons
+    const passwordToggles = document.querySelectorAll('.password-toggle');
+    passwordToggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            togglePassword(target);
+        });
+    });
+    
+    // Authenticate button
+    const authenticateBtn = document.getElementById('authenticateBtn');
+    if (authenticateBtn) {
+        authenticateBtn.addEventListener('click', authenticateWithGoogle);
+    }
+    
+    // Reconfigure button
+    const reconfigureBtn = document.getElementById('reconfigureBtn');
+    if (reconfigureBtn) {
+        reconfigureBtn.addEventListener('click', reconfigure);
+    }
+    
+    // Go to converter button
+    const goToConverterBtn = document.getElementById('goToConverterBtn');
+    if (goToConverterBtn) {
+        goToConverterBtn.addEventListener('click', goToConverter);
+    }
+    
+    // Copy API key button
+    const copyApiKeyBtn = document.getElementById('copyApiKeyBtn');
+    if (copyApiKeyBtn) {
+        copyApiKeyBtn.addEventListener('click', copyApiKey);
+    }
+    
+    // Modal close button
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeModal);
+    }
+    
+    // Modal overlay click
+    const modalOverlay = document.querySelector('.modal-overlay');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', closeModal);
+    }
+    
+    // Set redirect URI button
+    const setRedirectUriBtn = document.getElementById('setRedirectUriBtn');
+    if (setRedirectUriBtn) {
+        setRedirectUriBtn.addEventListener('click', setRedirectUri);
+    }
 }
 
 // Handle input changes
@@ -171,18 +395,55 @@ function showFieldSuccess(group, message) {
 function setRedirectUri() {
     const redirectUri = `${window.location.origin}/api/auth/callback`;
     
+    console.log('🔗 Setting redirect URI:', redirectUri);
+    
     // Update the display in the guide
     const redirectUriElement = document.getElementById('redirectUri');
     if (redirectUriElement) {
         redirectUriElement.textContent = redirectUri;
         redirectUriElement.onclick = () => copyToClipboard(redirectUri);
+        console.log('✅ Updated redirect URI in guide');
+    } else {
+        console.log('⚠️ Redirect URI guide element not found');
     }
     
-    // Set in the form input
+    // Set in the form input - try multiple approaches
     const redirectUriInput = document.getElementById('redirectUriInput');
     if (redirectUriInput) {
         redirectUriInput.value = redirectUri;
+        // Also set as default value
+        redirectUriInput.defaultValue = redirectUri;
+        // Trigger input event to ensure validation
+        redirectUriInput.dispatchEvent(new Event('input', { bubbles: true }));
+        console.log('✅ Redirect URI set in form input:', redirectUriInput.value);
+    } else {
+        console.log('❌ Redirect URI input field not found');
+        
+        // Try alternative selector
+        const altInput = document.querySelector('input[name="redirectUri"]');
+        if (altInput) {
+            altInput.value = redirectUri;
+            altInput.defaultValue = redirectUri;
+            console.log('✅ Redirect URI set via alternative selector');
+        }
     }
+    
+    // Also try to set it via form name
+    const form = document.getElementById('configForm');
+    if (form && form.redirectUri) {
+        form.redirectUri.value = redirectUri;
+        console.log('✅ Redirect URI set via form element');
+    }
+    
+    // Ensure it's set after a short delay as well
+    setTimeout(() => {
+        const input = document.getElementById('redirectUriInput') || document.querySelector('input[name="redirectUri"]');
+        if (input && !input.value) {
+            input.value = redirectUri;
+            input.defaultValue = redirectUri;
+            console.log('✅ Redirect URI set via timeout fallback');
+        }
+    }, 500);
 }
 
 // Handle form submission
@@ -191,13 +452,27 @@ async function handleFormSubmit(event) {
     
     const formData = new FormData(event.target);
     const config = {
-        clientId: formData.get('clientId').trim(),
-        clientSecret: formData.get('clientSecret').trim(),
-        redirectUri: formData.get('redirectUri').trim()
+        clientId: formData.get('clientId')?.trim(),
+        clientSecret: formData.get('clientSecret')?.trim(),
+        redirectUri: formData.get('redirectUri')?.trim()
     };
+    
+    console.log('📤 Form submission data:', {
+        clientId: config.clientId ? config.clientId.substring(0, 20) + '...' : 'MISSING',
+        clientSecret: config.clientSecret ? 'PROVIDED' : 'MISSING',
+        redirectUri: config.redirectUri || 'MISSING',
+        formDataEntries: Array.from(formData.entries()).map(([key, value]) => 
+            [key, key === 'clientSecret' ? 'PROVIDED' : (value ? value.substring(0, 20) + '...' : 'MISSING')]
+        )
+    });
     
     // Validate required fields
     if (!config.clientId || !config.clientSecret || !config.redirectUri) {
+        console.log('❌ Missing required fields:', {
+            clientId: !config.clientId,
+            clientSecret: !config.clientSecret,
+            redirectUri: !config.redirectUri
+        });
         showNotification('Please fill in all required fields', 'error');
         return;
     }
@@ -216,6 +491,8 @@ async function handleFormSubmit(event) {
     try {
         showLoadingModal('Saving Configuration', 'Validating credentials and saving configuration...');
         
+        console.log('🚀 Sending configuration to server...');
+        
         const response = await fetch(`${apiUrl}/api/config/save`, {
             method: 'POST',
             headers: {
@@ -224,7 +501,10 @@ async function handleFormSubmit(event) {
             body: JSON.stringify(config)
         });
         
+        console.log('📥 Server response status:', response.status);
+        
         const result = await response.json();
+        console.log('📋 Server response:', result);
         
         if (!response.ok) {
             throw new Error(result.error || 'Failed to save configuration');
@@ -240,8 +520,34 @@ async function handleFormSubmit(event) {
         
     } catch (error) {
         hideLoadingModal();
-        console.error('Configuration save failed:', error);
-        showNotification(error.message, 'error');
+        console.error('💥 Configuration save failed:', error);
+        
+        let errorMessage = error.message;
+        
+        // Try to parse error response if it's a fetch error
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Network error - please check your connection';
+        }
+        
+        showNotification(errorMessage, 'error');
+        
+        // If it's a validation error, highlight the problematic fields
+        if (errorMessage.includes('Validation failed')) {
+            // Re-run client-side validation to highlight issues
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientSecret = document.getElementById('clientSecret').value.trim();
+            const redirectUri = document.getElementById('redirectUriInput').value.trim();
+            
+            if (!clientId) {
+                showFieldError(document.getElementById('clientId').closest('.form-group'), 'Client ID is required');
+            }
+            if (!clientSecret) {
+                showFieldError(document.getElementById('clientSecret').closest('.form-group'), 'Client Secret is required');
+            }
+            if (!redirectUri) {
+                showFieldError(document.getElementById('redirectUriInput').closest('.form-group'), 'Redirect URI is required');
+            }
+        }
     }
 }
 
@@ -423,11 +729,15 @@ function showNotification(message, type = 'info') {
         <div class="notification-content">
             <span class="notification-icon">${icons[type] || icons.info}</span>
             <span class="notification-message">${message}</span>
-            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            <button class="notification-close">×</button>
         </div>
     `;
     
     document.body.appendChild(notification);
+    
+    // Add click handler for close button
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => notification.remove());
     
     // Animate in
     setTimeout(() => {
@@ -514,11 +824,34 @@ const styleSheet = document.createElement('style');
 styleSheet.textContent = notificationStyles;
 document.head.appendChild(styleSheet);
 
+// Debug function to check form state
+function debugFormState() {
+    console.log('🐛 Form debug info:');
+    console.log('- Redirect URI input exists:', !!document.getElementById('redirectUriInput'));
+    console.log('- Redirect URI input value:', document.getElementById('redirectUriInput')?.value);
+    console.log('- Form exists:', !!document.getElementById('configForm'));
+    console.log('- All form inputs:', Array.from(document.querySelectorAll('#configForm input')).map(input => ({
+        name: input.name,
+        id: input.id,
+        value: input.value,
+        type: input.type
+    })));
+}
+
+// Call debug function after setup
+setTimeout(() => {
+    debugFormState();
+}, 2000);
+
 // Export functions for global use
 window.SetupApp = {
     testCredentials,
     togglePassword,
     goToConverter,
     reconfigure,
-    copyToClipboard
+    copyToClipboard,
+    authenticateWithGoogle,
+    copyApiKey,
+    setRedirectUri,
+    debugFormState
 };

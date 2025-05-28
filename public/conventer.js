@@ -21,28 +21,37 @@ async function initializeConverter() {
             return;
         }
 
-        // Try to get API key from URL or localStorage
+        // Try to get API key from URL, localStorage, or check existing auth
         const urlParams = new URLSearchParams(window.location.search);
         const apiKeyFromUrl = urlParams.get('apiKey');
         const storedApiKey = localStorage.getItem('markdowndocs_api_key');
 
+        console.log('🔍 Checking authentication:', {
+            apiKeyFromUrl: apiKeyFromUrl ? apiKeyFromUrl.substring(0, 15) + '...' : 'none',
+            storedApiKey: storedApiKey ? storedApiKey.substring(0, 15) + '...' : 'none'
+        });
+
         if (apiKeyFromUrl) {
+            console.log('💾 Saving API key from URL');
             localStorage.setItem('markdowndocs_api_key', apiKeyFromUrl);
             currentApiKey = apiKeyFromUrl;
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (storedApiKey) {
+            console.log('🔑 Using stored API key');
             currentApiKey = storedApiKey;
         }
 
         if (currentApiKey) {
+            console.log('✅ API key found, validating...');
             await validateStoredApiKey();
         } else {
+            console.log('❌ No API key found, showing auth section');
             showAuthSection();
         }
 
     } catch (error) {
-        console.error('Initialization failed:', error);
+        console.error('💥 Initialization failed:', error);
         showAuthSection();
     }
 }
@@ -63,6 +72,7 @@ async function checkSystemConfiguration() {
 // Validate stored API key
 async function validateStoredApiKey() {
     try {
+        console.log('🔐 Validating stored API key...');
         updateAuthStatus('loading', 'Validating API key...');
 
         const response = await fetch(`${apiUrl}/api/auth/user`, {
@@ -71,22 +81,28 @@ async function validateStoredApiKey() {
             }
         });
 
+        console.log('📡 API key validation response:', response.status);
+
         if (response.ok) {
             const userData = await response.json();
             currentUser = userData.user;
-            updateAuthStatus('authenticated', `Welcome, ${currentUser.name}`);
+            
+            console.log('✅ API key validation successful for:', currentUser.name);
+            updateAuthStatus('authenticated', `Welcome back, ${currentUser.name}`);
             showConverterSection();
             loadConversionHistory();
         } else {
-            throw new Error('Invalid API key');
+            const errorData = await response.json();
+            console.log('❌ API key validation failed:', errorData);
+            throw new Error(errorData.error || 'Invalid API key');
         }
 
     } catch (error) {
-        console.error('API key validation failed:', error);
+        console.error('💥 API key validation failed:', error);
         localStorage.removeItem('markdowndocs_api_key');
         currentApiKey = null;
         currentUser = null;
-        updateAuthStatus('error', 'Invalid API key');
+        updateAuthStatus('error', 'Invalid API key - please authenticate again');
         showApiKeySection();
     }
 }
