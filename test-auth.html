@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Markdown to Docs API</title>
+</head>
+<body>
+    <h1>Markdown to Google Docs Converter</h1>
+    
+    <div id="auth-section">
+        <button onclick="authenticate()">1. Authenticate with Google</button>
+        <p id="auth-status"></p>
+    </div>
+    
+    <div id="convert-section" style="display:none;">
+        <h3>2. Convert Markdown</h3>
+        <textarea id="markdown" rows="10" cols="50" placeholder="Enter your markdown here...">
+# My Document
+
+This is **bold** text.
+
+## List
+- Item 1
+- Item 2
+        </textarea><br><br>
+        <input type="text" id="title" placeholder="Document title" value="My Test Document"><br><br>
+        <button onclick="convert()">Convert to Google Doc</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        
+        if (authToken) {
+            showConvertSection();
+        }
+        
+        function authenticate() {
+            window.location.href = 'http://localhost:3000/api/auth/google';
+        }
+        
+        function showConvertSection() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('convert-section').style.display = 'block';
+            document.getElementById('auth-status').innerHTML = '✅ Authenticated!';
+        }
+        
+        // Check for token in URL (if you set up redirects)
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        if (token) {
+            localStorage.setItem('authToken', token);
+            authToken = token;
+            showConvertSection();
+        }
+        
+        async function convert() {
+            const content = document.getElementById('markdown').value;
+            const title = document.getElementById('title').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/convert/markdown-to-doc', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content, title })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('result').innerHTML = `
+                        <h3>✅ Success!</h3>
+                        <p><strong>Document:</strong> ${result.document.name}</p>
+                        <p><a href="${result.document.webViewLink}" target="_blank">📄 Open in Google Docs</a></p>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `<p style="color:red;">❌ Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p style="color:red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
